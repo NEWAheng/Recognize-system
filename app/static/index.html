@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>课堂行为分析系统</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <!-- 顶部标题栏 + 系统切换导航 -->
+  <header class="app-header">
+    <h1 id="page-title">基于YOLOv8的学生课堂行为分析系统</h1>
+    <p class="subtitle" id="page-subtitle">图片 / 视频 / 本地摄像头 三种检测方式</p>
+    <nav class="page-nav" aria-label="系统切换">
+      <button type="button" class="nav-btn active" data-view="yolo">YOLOv8识别系统</button>
+      <button type="button" class="nav-btn" data-view="face">人脸识别系统</button>
+    </nav>
+  </header>
+
+  <!-- ============ YOLOv8 识别系统视图 ============ -->
+  <div class="layout" id="view-yolo">
+    <!-- 左侧配置面板（与原始 Streamlit 侧边栏布局一致） -->
+    <aside class="control-panel">
+      <h2>配置面板</h2>
+
+      <label class="slider-item" for="conf-slider">
+        <span>调整置信度 <output id="conf-out">0.25</output></span>
+        <input type="range" id="conf-slider" min="10" max="100" value="25" step="5">
+      </label>
+
+      <label class="slider-item" for="iou-slider">
+        <span>调整iou <output id="iou-out">0.45</output></span>
+        <input type="range" id="iou-slider" min="10" max="100" value="45" step="5">
+      </label>
+
+      <label class="select-item" for="model-select">
+        <span>模型</span>
+        <select id="model-select"></select>
+      </label>
+
+      <fieldset class="radio-group">
+        <legend>检测类型</legend>
+        <label><input type="radio" name="detect-type" value="image" checked> 图片检测</label>
+        <label><input type="radio" name="detect-type" value="video"> 视频检测</label>
+        <label><input type="radio" name="detect-type" value="camera"> 本地摄像头检测</label>
+      </fieldset>
+
+      <p class="panel-tip">提示：修改参数后，重新点击检测按钮生效。</p>
+    </aside>
+
+    <!-- 右侧主内容区 -->
+    <main class="content">
+
+      <!-- 图片检测 -->
+      <section class="tab-panel active" id="panel-image">
+        <div class="toolbar">
+          <input type="file" id="image-file" accept="image/png,image/jpeg" title="选择一张图片">
+          <button id="image-detect-btn" type="button" class="primary">开始检测</button>
+        </div>
+        <div class="img-compare" id="image-compare" hidden>
+          <figure>
+            <img id="image-origin" alt="原始图片">
+            <figcaption>原始图片</figcaption>
+          </figure>
+          <figure>
+            <img id="image-result" alt="图片检测结果">
+            <figcaption>图片检测结果</figcaption>
+          </figure>
+        </div>
+        <div class="result-tables" id="image-tables" hidden>
+          <h3>检测明细</h3>
+          <div class="table-wrap">
+            <table id="detect-table">
+              <thead><tr><th>序号</th><th>类别</th><th>置信度</th><th>box坐标</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <h3>类别统计</h3>
+          <div class="table-wrap">
+            <table id="count-table">
+              <thead><tr><th>类别</th><th>总数</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 视频检测 -->
+      <section class="tab-panel" id="panel-video">
+        <div class="toolbar">
+          <input type="file" id="video-file" accept="video/mp4" title="选择一个 mp4 视频">
+          <button id="video-start-btn" type="button" class="primary">开始识别</button>
+          <button id="video-stop-btn" type="button">停止</button>
+        </div>
+        <fieldset class="frame-options">
+          <legend>
+            <label><input type="checkbox" id="save-frames-check"> 保存帧图片</label>
+          </legend>
+          <div id="frame-options-grid" hidden>
+            <label>间隔分钟数
+              <input type="number" id="interval-minutes" min="1" value="10">
+            </label>
+            <label>每分钟帧数
+              <input type="number" id="frames-per-minute" min="1" max="60" value="10">
+            </label>
+            <label>输出文件夹
+              <input type="text" id="output-folder" value="output_frames">
+            </label>
+            <label>文件名格式
+              <input type="text" id="filename-format" value="frame_{time}_{index}">
+            </label>
+          </div>
+        </fieldset>
+        <figure class="stream-figure">
+          <img id="video-result" alt="视频检测结果">
+          <figcaption>视频检测结果（实时推理流，处理完成后自动结束）</figcaption>
+        </figure>
+        <p class="status" id="video-status"></p>
+      </section>
+
+      <!-- 摄像头检测 -->
+      <section class="tab-panel" id="panel-camera">
+        <div class="toolbar">
+          <button id="camera-start-btn" type="button" class="primary">开启摄像头识别</button>
+          <button id="camera-stop-btn" type="button">停止</button>
+        </div>
+        <figure class="stream-figure">
+          <img id="camera-result" alt="摄像头检测结果">
+          <figcaption>摄像头检测结果（实时推理流）</figcaption>
+        </figure>
+        <p class="status" id="camera-status"></p>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ 人脸识别系统视图 ============ -->
+  <div class="layout" id="view-face" hidden>
+    <!-- 左侧功能面板 -->
+    <aside class="control-panel">
+      <h2>当前功能</h2>
+
+      <fieldset class="radio-group">
+        <legend>功能类型</legend>
+        <label><input type="radio" name="face-function" value="extract" checked> 视频截取</label>
+        <label><input type="radio" name="face-function" value="recognize"> 人脸识别</label>
+        <label><input type="radio" name="face-function" value="add"> 添加新人脸</label>
+      </fieldset>
+
+      <!-- 功能：视频截取 配置 -->
+      <div class="function-config" id="face-extract-config">
+        <label class="file-item">上传视频
+          <input type="file" id="face-extract-file" accept="video/mp4,video/quicktime">
+        </label>
+        <p class="status small" id="face-extract-info"></p>
+        <label>开始时间(秒)
+          <input type="number" id="face-extract-start" min="0" value="0" step="0.1">
+        </label>
+        <label>结束时间(秒)
+          <input type="number" id="face-extract-end" min="0" value="60" step="0.1">
+        </label>
+        <label>截取帧数
+          <input type="number" id="face-extract-num" min="1" max="50" value="10">
+        </label>
+        <button id="face-extract-btn" type="button" class="primary">截取图片</button>
+      </div>
+
+      <!-- 功能：人脸识别 配置 -->
+      <div class="function-config" id="face-recognize-config" hidden>
+        <label class="file-item">上传图片（可多选）
+          <input type="file" id="face-recognize-files" accept="image/png,image/jpeg" multiple>
+        </label>
+        <label class="slider-item">
+          <span>识别置信度阈值 <output id="face-threshold-out">0.60</output></span>
+          <input type="range" id="face-threshold" min="10" max="100" value="60" step="1">
+        </label>
+        <button id="face-recognize-btn" type="button" class="primary">开始识别</button>
+        <p class="status small" id="face-recognize-info"></p>
+      </div>
+
+      <!-- 功能：添加新人脸 提示（表单位于右侧面板） -->
+      <div class="function-config" id="face-add-config" hidden>
+        <p class="status small">请在右侧填写学生信息（学号、姓名必填）并上传单人正脸照片，点击「提交到数据库」完成录入。</p>
+      </div>
+    </aside>
+
+    <!-- 右侧主内容区 -->
+    <main class="content">
+
+      <!-- 功能：视频截取 -->
+      <section class="tab-panel active" id="face-panel-extract">
+        <p class="placeholder">上传视频并设置时间范围后，点击「截取图片」。截取的帧将显示在这里。</p>
+        <div class="frame-grid" id="face-extract-grid"></div>
+      </section>
+
+      <!-- 功能：人脸识别 -->
+      <section class="tab-panel" id="face-panel-recognize">
+        <p class="placeholder">上传图片后点击「开始识别」，识别结果将显示在这里。</p>
+        <div id="face-recognize-results"></div>
+      </section>
+
+      <!-- 功能：添加新人脸 -->
+      <section class="tab-panel" id="face-panel-add">
+        <div class="add-face-layout">
+          <div class="add-face-form">
+            <label>学号*
+              <input type="text" id="face-add-id" placeholder="必填，不能与现有学号重复">
+            </label>
+            <label>姓名*
+              <input type="text" id="face-add-name" placeholder="必填">
+            </label>
+            <label>班级
+              <input type="text" id="face-add-class" placeholder="可选">
+            </label>
+            <label class="file-item">人脸图片（仅包含一张人脸）*
+              <input type="file" id="face-add-file" accept="image/png,image/jpeg">
+            </label>
+            <button id="face-add-btn" type="button" class="primary">提交到数据库</button>
+            <p class="status" id="face-add-result"></p>
+          </div>
+          <div class="add-face-preview">
+            <p class="placeholder">上传后在此预览人脸图片</p>
+            <img id="face-add-preview" alt="人脸图片预览" hidden>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 全局消息提示 -->
+  <div class="toast" id="toast" role="alert" hidden></div>
+
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/face.js"></script>
+</body>
+</html>

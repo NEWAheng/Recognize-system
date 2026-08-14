@@ -1,0 +1,27 @@
+# 课堂行为分析系统（YOLOv8 识别 + 人脸识别）—— 依赖清单
+# 运行环境：E:\anaconda\envs\NEWlif（Python 3.13.3）
+# 说明：ultralytics 可通过 pip 安装；若环境未安装，config.py 会自动回退到
+#       E:\ultralytics-main 源码目录。
+#
+# 安装命令（在项目根目录执行）：
+#   E:\anaconda\envs\NEWlif\python.exe -m pip install -r requirements.txt
+
+# ---- Web 框架（NEWlif 已内置，无需重复安装）----
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# ---- YOLOv8 识别 ----
+# torch/torchvision 请单独安装 CPU 版：
+#   E:\anaconda\envs\NEWlif\python.exe -m pip install torch torchvision
+ultralytics>=8.3.0
+
+# ---- 人脸识别 ----
+# dlib 在 Python 3.13 无官方预编译 wheel，若安装失败需从源码编译
+# （需安装 CMake 与 Visual Studio C++ 生成工具），或使用 Python 3.8~3.12 环境。
+dlib>=19.24.0
+pymysql>=1.1.0
+
+# ---- 通用 ----
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0

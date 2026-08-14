@@ -1,0 +1,28 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# ---------- 运行时生成数据（不上传）----------
+uploads/
+output_frames/
+app/static/generated/
+face_features.pkl
+
+# ---------- 本地环境变量（含数据库密码等敏感信息）----------
+.env
+.env.local
+
+# ---------- 数据库备份 ----------
+*.sql
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+*.iml
+
+# ---------- 系统文件 ----------
+Thumbs.db
+.DS_Store
